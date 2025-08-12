@@ -1,0 +1,2 @@
+# ClaudeCode_With_Bailian_Build_Videos
+使用ClaudeCode作为Agent平台，并通过百炼中提供的模型，完成从剧本到Videos的创作
