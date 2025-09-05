@@ -83,10 +83,11 @@
   - 文生图：使用bailian-image模型，通过API调用生成纯色背景的角色正面图片。
   - 图生视频：使用bailian-video-synthesis模型，通过API调用生成视频。
 - 阿里云百炼平台调用示例（可选）其中：
-  - src/example/bailian_multimodal_generation.py ： 其中有语音合成示例，用于生成字幕。
+  - src/example/bailian_multimodal_generation_qwen_image.py ： Qwen-Image图片生成示例，使用DashScope SDK调用方式，支持文生图功能，用于生成角色图片、背景图片。支持多种尺寸、负向提示词、种子设置等功能。该工具的优势是：可以生成清晰的带文字图片。
+  - src/example/bailian_multimodal_generation_qwen_tts.py ： 其中有语音合成示例，用于生成字幕。
   - src/example/bailian_text2image_image_synthesis_v2.py ： 其中有文生图示例，用于生成角色图片、背景图片。注意，这里应当使用最强模型，如wan2.2-t2i-plus。
   - src/example/bailian_uploads.py ： 其中有上传文件示例。用于在有必要时，将文件上传到阿里云百炼平台，并将URL做为模型输入。
-  - src/example/bailian_video_generation_video_synthesis.py ： 其中有图生视频示例，用于生成视频。其中最重要的是“多图参考（image_reference）”功能，用于将角色图片、背景图片生成分镜头视频。
+  - src/example/bailian_video_generation_video_synthesis.py ： 其中有图生视频示例，用于生成视频。其中最重要的是"多图参考（image_reference）"功能，用于将角色图片、背景图片生成分镜头视频。
 - python：用于执行过程脚本。
 
 # 工作步骤
@@ -143,3 +144,92 @@ b. 为了保证字幕、声音与视频同步。你应当先针对分镜头视�
 c. 调用ffmpeg，根据合并后的脚本，生成最终的视频文件。
 d. 字幕请注意，必须要和视频同步，不能提前或延迟。
 e. 将合并后的视频，保存到./work/<视频主题>/final.mp4文件中。
+
+## 图片生成功能说明
+
+### Qwen-Image API 使用指南
+
+项目新增了基于DashScope SDK的Qwen-Image图片生成功能，位于 `src/example/bailian_multimodal_generation_qwen_image.py`。
+
+#### 环境准备
+
+1. 安装依赖包：
+```bash
+pip install dashscope requests
+```
+
+2. 设置API密钥：
+```bash
+export DASHSCOPE_API_KEY='your-api-key-here'
+```
+
+#### 功能特性
+
+- **文生图功能**：根据文本描述生成高质量图片
+- **多种尺寸支持**：
+  - `1664*928`: 16:9 横屏（适合背景）
+  - `1472*1140`: 4:3 横屏
+  - `1328*1328`: 1:1 正方形（默认）
+  - `1140*1472`: 3:4 竖屏（适合角色）
+  - `928*1664`: 9:16 竖屏
+- **负向提示词**：排除不需要的元素
+- **智能改写**：自动优化提示词
+- **种子设置**：确保结果可重现
+- **批量生成**：支持多个角色/场景批量处理
+
+#### 基本用法
+
+```python
+from bailian_multimodal_generation_qwen_image import BailianImageGeneration
+
+# 初始化客户端
+client = BailianImageGeneration()
+
+# 生成图片
+result = client.generate_image(
+    prompt="一只可爱的橙色小猫，坐在绿色的草地上，阳光明媚，卡通风格",
+    size="1328*1328",
+    prompt_extend=True,
+    watermark=False
+)
+
+# 保存图片
+if result['success']:
+    client.save_image(result['image_url'], "cat.jpg")
+```
+
+#### 视频制作建议
+
+1. **角色图片生成**：
+   - 使用 `1140*1472` (3:4竖屏) 尺寸
+   - 添加"白色背景，正面全身像"到提示词
+   - 使用负向提示词排除复杂背景：`"背景复杂，侧面，背面，多个人物"`
+   - 设置固定种子确保角色一致性
+
+2. **背景图片生成**：
+   - 使用 `1664*928` (16:9横屏) 尺寸
+   - 使用负向提示词排除人物：`"人物，角色，人类"`
+   - 专注于场景和环境描述
+
+#### 示例功能
+
+运行示例文件可体验以下功能：
+
+1. **基础图片生成** - 简单的文生图示例
+2. **角色图片生成** - 适用于视频制作的角色图
+3. **背景图片生成** - 场景背景图生成
+4. **尺寸对比** - 不同尺寸效果对比
+5. **批量角色生成** - 多个角色批量处理
+
+```bash
+cd src/example
+python bailian_multimodal_generation_qwen_image.py
+```
+
+#### 注意事项
+
+- 提示词最大800字符，负向提示词最大500字符
+- 生成的图片URL有时效性，建议及时下载保存
+- 避免频繁请求，建议请求间隔2-3秒
+- 当前仅支持生成1张图片
+- 提示词要具体详细，有助于生成更准确的图像
